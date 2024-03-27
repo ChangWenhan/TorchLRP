@@ -26,8 +26,6 @@ from visualization import project, clip_quantile, heatmap_grid, grid
 torch.manual_seed(1337)
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-
-
 # # # # # ImageNet Data
 config = configparser.ConfigParser()
 config.read((base_path / 'config.ini').as_posix())
@@ -42,6 +40,20 @@ _std  = torch.tensor([0.229, 0.224, 0.225], device=device).view((1, 3, 1, 1))
 def unnormalize(x):
     return x * _std + _mean
 
+def accuracy_test(test_model, loader):
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for images, labels in loader:
+            images, labels = images.to(device), labels.to(device)
+            outputs = test_model(images)
+            _, predicted = torch.max(outputs, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+    accuracy = 100 * correct / total
+    print(f'VGG 模型在测试数据集上的分类精度为: {accuracy:.2f}%')
+
 transform = T.Compose([
     T.Resize(256), 
     T.CenterCrop(224), 
@@ -50,7 +62,12 @@ transform = T.Compose([
                  std = _std.flatten()    ),
 ])
 
-dataset = ImageNetDataset(transform=transform)
+dataset = ImageNetDataset(root_dir='/home/cwh/Workspace/TorchLRP-master/torch_imagenet/images', transform=transform)
+
+#生成一个数据集用来测试模型精确度
+test_dataset = datasets.ImageFolder(root="/home/cwh/Workspace/TorchLRP-master/torch_imagenet/imagenet-mini/train", loader=datasets.folder.default_loader, transform=transform)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, shuffle=False)
+
 train_loader = torch.utils.data.DataLoader(dataset, batch_size=12, shuffle=True)
 # # # # # End ImageNet Data
 
@@ -61,6 +78,7 @@ vgg = getattr(torchvision.models, "vgg%i"%vgg_num)(pretrained=True).to(device)
 # vgg = torchvision.models.vgg16(pretrained=True).to(device)
 vgg.eval()
 
+# accuracy_test(vgg, test_loader)
 print("Loaded vgg-%i" % vgg_num)
 
 lrp_vgg = lrp.convert_vgg(vgg).to(device)
@@ -72,7 +90,9 @@ x = x.to(device)
 x.requires_grad_(True)
 
 y_hat = vgg(x)
+print(y_hat)
 y_hat_lrp = lrp_vgg.forward(x)
+print(y_hat_lrp)
 
 assert torch.allclose(y_hat, y_hat_lrp, atol=1e-4, rtol=1e-4), "\n\n%s\n%s\n%s" % (str(y_hat.view(-1)[:10]), str(y_hat_lrp.view(-1)[:10]), str((torch.abs(y_hat - y_hat_lrp)).max()))
 print("Done testing")
@@ -95,11 +115,15 @@ def compute_and_plot_explanation(rule, ax_, patterns=None, plt_fn=heatmap_grid):
 
     # Choose argmax
     y_hat_lrp = y_hat_lrp[torch.arange(x.shape[0]), y_hat_lrp.max(1)[1]]
-    y_hat_lrp = y_hat_lrp.sum()
+    y_hat_lrp = y_hat_lrp.sum()    
 
     # Backward pass (compute explanation)
+    lrp.trace.enable_and_clean()
     y_hat_lrp.backward()
     attr = x.grad
+    all_relevances=lrp.trace.collect_and_disable()
+    for i,t in enumerate(all_relevances):
+        t = t[0].tolist()
 
     # Plot
     attr = plt_fn(attr)
@@ -140,7 +164,7 @@ for i, (rule, pattern, fn, (p, q) ) in enumerate(explanations):
 
 fig.tight_layout()
 fig.savefig((base_path / 'examples' / 'plots' / ("vgg%i_explanations.png" % vgg_num)).as_posix(), dpi=280)
-plt.show()
+# plt.show()
 
 
 

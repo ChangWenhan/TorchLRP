@@ -38,6 +38,7 @@ def main(args):
 
     model = get_mnist_model()
     # Either train new model or load pretrained weights
+    # prepare_mnist_model(args, model, model_path='/home/cwh/Workspace/TorchLRP-master/model_param.pth', epochs=args.epochs, train_new=args.train_new)
     prepare_mnist_model(args, model, epochs=args.epochs, train_new=args.train_new)
     model = model.to(args.device)
     train_loader, test_loader = get_mnist_data(transform=torchvision.transforms.ToTensor(), batch_size=args.batch_size)
