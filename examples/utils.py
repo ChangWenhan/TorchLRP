@@ -41,7 +41,7 @@ def get_mnist_data(transform, batch_size=32):
     train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=False)
 
     test = torchvision.datasets.MNIST((base_path / 'data').as_posix(), train=False, download=True, transform=transform)
-    test_loader = torch.utils.data.DataLoader(test, batch_size=batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test, batch_size=batch_size, shuffle=False)
     return train_loader, test_loader
 
 def prepare_mnist_model(args, model, model_path=(base_path / 'examples' / 'models' / 'mnist_model.pth').as_posix(), epochs=1, lr=1e-3, train_new=False, transform=_standard_transform):
