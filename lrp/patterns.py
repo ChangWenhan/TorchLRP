@@ -94,8 +94,11 @@ def _fit_pattern(model, train_loader, max_iter, device, mask_fn = lambda y: torc
                 continue
             
             mask = mask_fn(y).float().to(device)
-            if isinstance(m, torch.nn.Conv2d): y_wo_bias = y - m.bias.view(-1, 1, 1) 
-            else:                              y_wo_bias = y - m.bias
+            if m.bias == None:
+                y_wo_bias = y
+            else:
+                if isinstance(m, torch.nn.Conv2d): y_wo_bias = y - m.bias.view(-1, 1, 1) 
+                else:                              y_wo_bias = y - m.bias
 
             cnt_, cnt_all_, x_, y_, xy_, w, w_fn = _prod(m, x, y_wo_bias, mask)
 
