@@ -21,6 +21,8 @@ class MaxPooling2d(Function):
         relevance_input  = torch.autograd.grad(Z, input, relevance_output)
         relevance_input = relevance_input * input
 
+        # print(relevance_input.shape)
+
         return relevance_input, None, None, None 
 
 maxpool2d = {
